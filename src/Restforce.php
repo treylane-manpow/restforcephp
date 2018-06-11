@@ -4,6 +4,7 @@ namespace EventFarm\Restforce;
 use EventFarm\Restforce\Rest\GuzzleRestClient;
 use EventFarm\Restforce\Rest\OAuthAccessToken;
 use EventFarm\Restforce\Rest\OAuthRestClient;
+use EventFarm\Restforce\Rest\OAuthRestClientException;
 use EventFarm\Restforce\Rest\RestClientInterface;
 use EventFarm\Restforce\Rest\SalesforceRestClient;
 use Psr\Http\Message\ResponseInterface;
@@ -28,6 +29,8 @@ class Restforce implements RestforceInterface
     private $apiVersion;
     /** @var OAuthRestClient|null */
     private $oAuthRestClient;
+    /** @var string */
+    private $authUrl;
 
     public function __construct(
         string $clientId,
@@ -104,27 +107,50 @@ class Restforce implements RestforceInterface
             'q' => $queryString,
         ]);
     }
-
     public function userInfo(): ResponseInterface
     {
         return $this->getOAuthRestClient()->get(self::USER_INFO_ENDPOINT);
     }
-
-    private function getOAuthRestClient(): RestClientInterface
+    public function setUrl(string $url) : self
     {
-        if ($this->oAuthRestClient === null) {
+        $this->authUrl = $url;
+        return $this;
+    }
+    private function getAuthUrl() :string
+    {
+        if($this->authUrl === null)
+        {
+            throw new OAuthRestClientException('No Login URL set.');
+        }
+        return $this->authUrl;
+    }
+
+    private function setOAuthRestClient(oAuthRestClient $client = null) : self
+    {
+        if($client === null)
+        {
             $this->oAuthRestClient = new OAuthRestClient(
                 new SalesforceRestClient(
                     new GuzzleRestClient('https://na1.salesforce.com'),
                     $this->apiVersion
                 ),
-                new GuzzleRestClient('https://login.salesforce.com'),
+                new GuzzleRestClient($this->getAuthUrl()),
                 $this->clientId,
                 $this->clientSecret,
                 $this->username,
                 $this->password,
                 $this->accessToken
             );
+        }else{
+            $this->oAuthRestClient = $client;
+        }
+
+        return $this;
+    }
+    private function getOAuthRestClient(): RestClientInterface
+    {
+        if ($this->oAuthRestClient === null) {
+           $this->setOAuthRestClient();
         }
 
         return $this->oAuthRestClient;
