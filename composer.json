@@ -1,5 +1,5 @@
 {
-    "name": "eventfarm/restforcephp",
+    "name": "treylane-manpow/restforcephp",
     "description": "PHP Salesforce REST",
     "license": "MIT",
     "require-dev": {
